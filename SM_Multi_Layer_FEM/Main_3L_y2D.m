@@ -213,7 +213,7 @@ cb1.Label.Position = [0.6 -0.04 0];
 cb1.FontSize = 10;
 
 %% Simulation iteration
-for ti = 60152:nt
+for ti = 1:nt
     t = dt * (ti - 1);
     tt(ti) = t;
 
@@ -326,3 +326,4 @@ end
 fprintf('\nDone!\n');
 toc
 diary OFF
+
