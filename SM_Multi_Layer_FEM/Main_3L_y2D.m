@@ -27,24 +27,13 @@ diary([prefix,'.txt']);
 fprintf('saving to %s\n',folder);
 
 %%
-FileNameAndLocation = mfilename('fullpath');   % current script full path without extension
+FileNameAndLocation = mfilename('fullpath');
 [filepath,name,~] = fileparts(FileNameAndLocation);
 ext='.m';
-% Original script full filename
 origFile = fullfile(filepath,[name ext]);
-
-% Backup filename (adds "backup" + version + .txt)
 newbackup = fullfile(folder, sprintf('%s_%s.txt',time,name));
-
-% Check if backup already exists
-A = exist(newbackup,'file');
-if (A ~= 0)
-    warning('Backup already exists for the current version')
-else
-    % Create backup by copying the current .m file
-    copyfile(origFile, newbackup);
-    fprintf('Backup created: %s\n', newbackup);
-end
+copyfile(origFile, newbackup);
+fprintf('Backup created: %s\n', newbackup);
 
 %% Load Mesh Data: p-nodes; t-elements;
 folderpath = [filepath,'\N=',num2str(N),'\L=',num2str(L),'\H=',num2str(H)]; 
@@ -123,10 +112,6 @@ nx = 200; ny = 50;   % thin layers -> small ny
 max_steps = nt;
 tt = zeros(max_steps,1); 
 
-% u3_avg = zeros(nt,1);
-% u2_avg = zeros(nt,1);
-% u1_avg = zeros(nt,1);
-
 %%
 for e=1:length(eta_12)
 eval12 = round(eta_12(e),4);
@@ -155,7 +140,7 @@ vq1=griddata(p1(1,:),p1(2,:),u1,xq1,yq1);
 giffile = [prefix,eval,'_pattern','.gif'];
 fig = figure('Color','w');%,'WindowState', 'maximized');
 fig.Position = [320 150 705 500];
-ax3 = axes('Parent',fig);   % for layer-2 (middle)
+ax3 = axes('Parent',fig);   % for layer-3 (top)
 hold(ax3,'on');
 u3_fig=surf(ax3, xq3, yq3, vq3, 'EdgeColor','none');
 view(ax3,2)
@@ -279,35 +264,30 @@ u3 = u3_new;
 u2 = u2_new;
 u1 = u1_new;
 
-
-% u3_avg(ti) = mean(u3);
-% u2_avg(ti) = mean(u2);
-% u1_avg(ti) = mean(u1);
-
     %% Plot and gif
     if mod(ti, drawperframe) == 1
         vq3 = griddata(p3(1,:),p3(2,:),u3,xq3,yq3);
         vq2 = griddata(p2(1,:),p2(2,:),u2,xq2,yq2);
         vq1 = griddata(p1(1,:),p1(2,:),u1,xq1,yq1);
-% ---- interface lines (always visible) ----
-zline3 = max(vq3(:)) * ones(1,2);
-zline2 = max(vq2(:)) * ones(1,2);
+        % ---- interface lines (always visible) ----
+        zline3 = max(vq3(:)) * ones(1,2);
+        zline2 = max(vq2(:)) * ones(1,2);
 
-% Interface between layer 3 and 2 (y = 2*dy)
-plot3(ax3, [L3(1) L3(2)], [L3(3) L3(3)], ...
-      zline3, 'k', 'LineWidth', 1.5);
+        % Interface between layer 3 and 2 (y = 2*dy)
+        plot3(ax3, [L3(1) L3(2)], [L3(3) L3(3)], ...
+        zline3, 'k', 'LineWidth', 1.5);
 
-% Interface between layer 2 and 1 (y = dy)
-plot3(ax2, [L2(1) L2(2)], [L2(3) L2(3)], ...
-      zline2, 'k', 'LineWidth', 1.5);
+        % Interface between layer 2 and 1 (y = dy)
+        plot3(ax2, [L2(1) L2(2)], [L2(3) L2(3)], ...
+        zline2, 'k', 'LineWidth', 1.5);
 
         if showanimation
             u3_fig.ZData = vq3;
             u2_fig.ZData = vq2;
             u1_fig.ZData = vq1;
-ax3.Title.String = sprintf('t = %.4f,  \\eta_{12} = %.3g,  \\eta_{23} = %.3g', ...
-                            t, eval12, eval23);
-ax3.Title.Interpreter = 'tex';
+            ax3.Title.String = sprintf('t = %.4f,  \\eta_{12} = %.3g,  \\eta_{23} = %.3g', ...
+                                       t, eval12, eval23);
+            ax3.Title.Interpreter = 'tex';
             drawnow;
         end
         if makegif
@@ -339,60 +319,6 @@ end
 %% saving final pattern
 saveas(fig,[prefix,eval,'_final.png']);
 saveas(fig,[prefix,eval,'_final.fig']);
-
-%%
-% t_used = tt(1:ti);
-% u1_used = u1_avg(1:ti);
-% u2_used = u2_avg(1:ti);
-% u3_used = u3_avg(1:ti);
-% 
-% fig_avg=figure;
-% plot(t_used, u3_used, 'g', 'LineWidth', 2); hold on;
-% plot(t_used, u2_used, 'r', 'LineWidth', 2); hold on;
-% plot(t_used, u1_used, 'b', 'LineWidth', 2); hold on;
-% xlabel('Time');
-% ylabel('Spatial average');
-% legend('$\bar u_3(t)$', '$\bar u_2(t)$', '$\bar u_1(t)$', 'Interpreter','latex');
-% title('Spatially averaged dynamics (Hopf)');
-% grid on;
-% saveas(fig_avg,[prefix,eval,'_avg.png']);
-% saveas(fig_avg,[prefix,eval,'_avg.fig']);
-
-%%
-% odefun = @(t,y) [
-%     par(1)*y(1) - y(1)^3 + eta_12 * (par(4)*y(1) + par(5)*y(2));
-%     par(2)*y(2) - y(2)^3 - eta_12 * (par(4)*y(1) + par(5)*y(2)) ...
-%                          + eta_23 * (par(6)*y(2) + par(7)*y(3));
-%     par(3)*y(3) - y(3)^3 - eta_23 * (par(6)*y(2) + par(7)*y(3))
-% ];
-% 
-% y0 = [0.01; 0.01; 0.01];   % small perturbation
-% 
-% [t_ode, y_ode] = ode45(odefun, [0 T], y0);
-% 
-% fig_ode = figure;
-% 
-% plot(t_used, u1_used, 'b', 'LineWidth', 2); hold on;
-% plot(t_ode, y_ode(:,1), 'b--', 'LineWidth', 2);
-% 
-% plot(t_used, u2_used, 'r', 'LineWidth', 2); hold on;
-% plot(t_ode, y_ode(:,2), 'r--', 'LineWidth', 2);
-% 
-% plot(t_used, u3_used, 'g', 'LineWidth', 2); hold on;
-% plot(t_ode, y_ode(:,3), 'g--', 'LineWidth', 2);
-% 
-% xlabel('Time');
-% ylabel('Concentration');
-% legend('PDE $\bar u_1$', 'ODE $u_1$', ...
-%        'PDE $\bar u_2$', 'ODE $u_2$', ...
-%        'PDE $\bar u_3$', 'ODE $u_3$', ...
-%        'Interpreter','latex');
-% 
-% title('Temporal dynamics: PDE vs ODE (3-layer system)');
-% grid on;
-% 
-% saveas(fig_ode,[prefix,eval,'_ode3.png']);
-% saveas(fig_ode,[prefix,eval,'_ode3.fig']);
 
 end
 
