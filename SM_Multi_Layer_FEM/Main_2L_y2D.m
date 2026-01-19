@@ -24,24 +24,13 @@ diary([prefix,'.txt']);
 fprintf('saving to %s\n',folder);
 
 %%
-FileNameAndLocation = mfilename('fullpath');   % current script full path without extension
+FileNameAndLocation = mfilename('fullpath');
 [filepath,name,~] = fileparts(FileNameAndLocation);
 ext='.m';
-% Original script full filename
 origFile = fullfile(filepath,[name ext]);
-
-% Backup filename (adds "backup" + version + .txt)
 newbackup = fullfile(folder, sprintf('%s_%s.txt',time,name));
-
-% Check if backup already exists
-A = exist(newbackup,'file');
-if (A ~= 0)
-    warning('Backup already exists for the current version')
-else
-    % Create backup by copying the current .m file
-    copyfile(origFile, newbackup);
-    fprintf('Backup created: %s\n', newbackup);
-end
+copyfile(origFile, newbackup);
+fprintf('Backup created: %s\n', newbackup);
 
 %% Load Mesh Data: p-nodes; t-elements;
 folderpath = [filepath,'\N=',num2str(N),'\L=',num2str(L),'\H=',num2str(H)]; 
@@ -89,12 +78,9 @@ stopti=nt; % stop patterning at nt
 nFrame=ceil((T/dt)/drawperframe);
 
 %% Assemble Matrices
-ord=3;tic
+ord=3;
 [S_2,M_2]=AssembleGlobalMatrices2D(p2,t2,ord);
 [S_1,M_1]=AssembleGlobalMatrices2D(p1,t1,ord);
-M_big = blkdiag(M_2,M_1);
-S_big = blkdiag(D_2*S_2, D_1*S_1);
-toc
 
 %% Grids
 nx = 200; ny = 50;
@@ -135,7 +121,7 @@ vq1=griddata(p1(1,:),p1(2,:),u1,xq1,yq1);
 
 giffile = [prefix,eval,'_pattern','.gif'];
 fig = figure('Color','w');%,'WindowState', 'maximized');
-ax2 = axes('Parent',fig);   % for u (top layer)
+ax2 = axes('Parent',fig);   % for top layer
 hold(ax2,'on');
 u2_fig=surf(ax2, xq2, yq2, vq2, 'EdgeColor','none');
 view(ax2,2)
@@ -160,7 +146,7 @@ cb2.Label.Units='normalized';
 cb2.Label.Position = [0.6 -0.04 0];
 cb2.FontSize = 10;
 
-ax1 = axes('Parent',fig);   % for v (bottom layer)
+ax1 = axes('Parent',fig);   % for bottom layer
 hold(ax1,'on');
 u1_fig=surf(ax1, xq1, yq1, vq1, 'EdgeColor','none');
 view(ax1,2)
@@ -187,59 +173,33 @@ for ti = 1:nt
     t = dt * (ti - 1);
     tt(ti) = t;
 
-%% --- Right-hand side assembly ---
-ord=3;
-F_2 = ReactKineInt(p2,t2,u2,f_2,ord);
-F_1 = ReactKineInt(p1,t1,u1,f_1,ord);
+    %% --- Right-hand side assembly ---
+    ord=3;
+    F_2 = ReactKineInt(p2,t2,u2,f_2,ord);
+    F_1 = ReactKineInt(p1,t1,u1,f_1,ord);
 
-ord=2;
-b2_bottom = NLBoundFluxInt(bottom_t2, top_t1, p2, p1, u2, u1, G_2, eta(e), ord);
-b1_top    = NLBoundFluxInt(top_t1, bottom_t2, p1, p2, u1, u2, G_1, -eta(e), ord);
+    ord=2;
+    b2_bottom = NLBoundFluxInt(bottom_t2, top_t1, p2, p1, u2, u1, G_2, eta(e), ord);
+    b1_top    = NLBoundFluxInt(top_t1, bottom_t2, p1, p2, u1, u2, G_1, -eta(e), ord);
 
-if any(isinf(b2_bottom(:))) || any(isinf(b1_top(:)))
-    error('Inf at the boundary conditions  at step %d (time = %.5f)', ti, t);
-end
+    %% Matrix system
+    u2_new = (M_2 + dt/2*D_2*S_2)\ ...
+            ((M_2 - dt/2*D_2*S_2)*u2 + dt*(F_2 + b2_bottom));
 
-%% Matrix system
-u2_new = (M_2 + dt/2*D_2*S_2)\ ...
-         ((M_2 - dt/2*D_2*S_2)*u2 + dt*(F_2 + b2_bottom));
+    u1_new = (M_1 + dt/2*D_1*S_1)\ ...
+            ((M_1 - dt/2*D_1*S_1)*u1 + dt*(F_1 + b1_top));
 
-u1_new = (M_1 + dt/2*D_1*S_1)\ ...
-         ((M_1 - dt/2*D_1*S_1)*u1 + dt*(F_1 + b1_top));
-
-%%
-U_big = [u2; u1];
-F_big = [F_2; F_1];
-B_big = [b2_bottom; b1_top];
-A = M_big + 0.5*dt*S_big;
-B = (M_big - 0.5*dt*S_big)*U_big + dt*(F_big + B_big);
-
-%% Stability and NaN check
-if any(isnan(A(:))) || any(isnan(B(:)))
- [any(isnan(A(:)))   %1
-any(isnan(B(:)))    %2
-any(isnan(u2(:)))   %3
-any(isnan(u1(:)))   %4
-any(isnan(B_big(:)))    %5
-any(isnan(F_big(:)))    %6
-any(isnan(b2_bottom(:)))    %7
-any(isnan(b1_top(:)))]    %8
-   error('Matrix A or RHS B contains NaN at step %d (time = %.5f)', ti, t);
-end
-if condest(A) > 1e12
-    warning('Matrix A is ill-conditioned at step %d (time = %.5f), condest = %.2e', ti, t, condest(A));
-end
     %% Pattern detection using norms
     err2 = norm(u2_new - u2)/norm(u2);
     err1 = norm(u1_new - u1)/norm(u1);
     maxErr = max([err2, err1]);
 
-%% Update and save
-u2 = u2_new;
-u1 = u1_new;
+    %% Update and save
+    u2 = u2_new;
+    u1 = u1_new;
 
-u2_avg(ti) = mean(u2);
-u1_avg(ti) = mean(u1);
+    u2_avg(ti) = mean(u2);
+    u1_avg(ti) = mean(u1);
 
     %% Plot and gif
     if mod(ti, drawperframe) == 1
@@ -248,10 +208,10 @@ u1_avg(ti) = mean(u1);
         if showanimation
             u2_fig.ZData = vq2;
             u1_fig.ZData = vq1;
-ax2.Title.String = sprintf('t = %.4f,  \\eta = %.3g', t, evall);
-ax2.Title.Interpreter = 'tex';
-zline = max([vq1(:); vq2(:)]) * ones(1,2);
-plot3(ax2, [L1(1) L1(2)], [L2(3) L2(3)], zline, 'k','LineWidth',1);
+            ax2.Title.String = sprintf('t = %.4f,  \\eta = %.3g', t, evall);
+            ax2.Title.Interpreter = 'tex';
+            zline = max([vq1(:); vq2(:)]) * ones(1,2);
+            plot3(ax2, [L1(1) L1(2)], [L2(3) L2(3)], zline, 'k','LineWidth',1);
             drawnow;
         end
         if makegif
