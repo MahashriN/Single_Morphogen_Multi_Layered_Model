@@ -2,7 +2,7 @@
 
 This repository contains MATLAB code used to generate numerical results for a research study on pattern formation in coupled multilayer reaction–diffusion systems.
 
-The simulations are implemented using a finite element method in two spatial dimensions, with support for multiple coupled layers, nonlinear reaction kinetics, and boundary flux terms.
+The simulations are implemented using a finite element method in two spatial dimensions, with support for multiple coupled layers, nonlinear reaction kinetics, and nonlinear boundary flux terms.
 
 ### How to run the code 
 1. Generate the mesh  
