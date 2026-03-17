@@ -1,12 +1,12 @@
 clear all; close all; clc;
-save_file=0; % 0-only see meshes; 1-save the mesh files
+save_file=1; % 0-only see meshes; 1-save the mesh files
 
 folder='D:\MATLAB Output\SM_Multi_Layer_FEM\';
 time = datestr(datetime('now'),'yyyymmdd_HHMMSS');
 prefix = [folder,time];
-
-dx=0.13;  %[0.03 0.06 0.1 0.09 0.18]
-H=2.5;      %[0.1  0.5  1   2    5] 
+dy=0.03; 
+dx=0.1;
+H=0.1;    
 L=20;
 N=2;
 pf=['N=',num2str(N),'\','L=',num2str(L),'\','H=',num2str(H),'\'];
@@ -14,7 +14,7 @@ pf=['N=',num2str(N),'\','L=',num2str(L),'\','H=',num2str(H),'\'];
 %%
 if N>2
 L3=[0,L,2*H,3*H];
-[p3,t3,p3_1DB,t3_1DB]=Rectangle2D(L3,dx,50,'edge',[1,3],[prefix,'_3']);
+[p3,t3,p3_1DB,t3_1DB]=Rectangle2D(L3,dx,dy,50,'edge',[1,3],[prefix,'_3']);
 bottom_p3 = p3_1DB(1,:);
 bottom_t3 = t3_1DB(1:2,:);
 top_p3    = p3_1DB(2,:);
@@ -31,7 +31,7 @@ end
 %%
 if N>1
 L2=[0,L,H,2*H];
-[p2,t2,p2_1DB,t2_1DB]=Rectangle2D(L2,dx,50,'edge',[1,3],[prefix,'_2']);
+[p2,t2,p2_1DB,t2_1DB]=Rectangle2D(L2,dx,dy,50,'edge',[1,3],[prefix,'_2']);
 bottom_p2 = p2_1DB(1,:);
 bottom_t2 = t2_1DB(1:2,:);
 top_p2    = p2_1DB(2,:);
@@ -48,7 +48,7 @@ end
 %%
 if N>0
 L1=[0,L,0,H];
-[p1,t1,p1_1DB,t1_1DB]=Rectangle2D(L1,dx,50,'edge',[1,3],[prefix,'_1']);
+[p1,t1,p1_1DB,t1_1DB]=Rectangle2D(L1,dx,dy,50,'edge',[1,3],[prefix,'_1']);
 bottom_p1 = p1_1DB(1,:);
 bottom_t1 = t1_1DB(1:2,:);
 top_p1    = p1_1DB(2,:);
@@ -63,15 +63,17 @@ save([pf,'top_t1_1D.mat'],'-mat','top_t1')
 end
 end
 %%
-function [p,t,bp,bt]=Rectangle2D(L,dx,d,RegionType,RegionID,prefix)
+function [p,t,bp,bt]=Rectangle2D(L,dx,dy,d,RegionType,RegionID,prefix)
 Lxa=L(1); Lxb=L(2);
 Lya=L(3); Lyb=L(4);
 model=createpde();
-R = [3,4,Lxa,Lxb,Lxb,Lxa,Lya,Lya,Lyb,Lyb]';
+scale = dx/dy;
+R = [3,4,Lxa,Lxb,Lxb,Lxa, Lya*scale,Lya*scale,Lyb*scale,Lyb*scale]';
 g = decsg(R);
 geom = geometryFromEdges(model, g);
 mesh = generateMesh(model,'Hmax',dx,"GeometricOrder","linear");
 p=mesh.Nodes;
+p(2,:) = p(2,:)/scale;
 t=mesh.Elements; 
 for i=1:length(RegionID)
 bp(i,:) = findNodes(mesh,"region",RegionType,RegionID(i));
