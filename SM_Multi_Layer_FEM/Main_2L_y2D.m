@@ -5,11 +5,14 @@ tic
 showanimation=1;
 makegif=1;
 schnakenberg=01;
+hopf=01;
+boundary=0;
+out_of_phase=0;
 in_phase=0;
-savemat=0;
+savemat=1;
 
 drawperframe=500;
-tol = 1e-8;
+tol = 1e-9;
 
 %% time discretization
 T = 250;
@@ -20,9 +23,7 @@ nFrame=ceil((T/dt)/drawperframe);
 
 %%
 if savemat
-if abs(T-25) < 1e-8
-    saveStride = 1;
-elseif abs(T-100) < 1e-8
+if abs(T-250) < 1e-8
     saveStride = 1;
 else
     saveStride = drawperframe;   % fallback
@@ -34,10 +35,49 @@ end
 N = 2;
 L = 20;
 H = 0.1;
-eta = 0.05; 
+eta = 0.1; 
 
 %% saving folder and name
 folder='D:\MATLAB Output\SM_Multi_Layer_FEM\';
+
+%% Define Parameters, the Source Term, Coupling Term and steady states
+if schnakenberg
+    if out_of_phase
+folder = [folder,'out_of_phase\'];
+a=0.05; b=1.2;
+D_2=1;
+D_1=30;    
+    elseif hopf
+folder = [folder,'hopf\'];
+a=0.05; b=0.5;
+D_2=1;
+D_1=1;
+    elseif boundary
+folder = [folder,'boundary\'];
+a=0.05; b=0.7;
+D_2=1;
+D_1=20;
+    end        
+f_2=@(u) a - u;
+f_1=@(v) b - 0*v;
+G_2=@(u2,u1) (u2.^2.*u1);
+G_1=@(u1,u2) (u2.^2.*u1);
+u20=a+b; u10=b/(a+b)^2;
+sign = [+1;-1];
+elseif in_phase
+folder = [folder,'in_phase\'];
+a=0.75; b=-1; ep=0.01;
+D_2=1;
+D_1=50;
+f_2=@(u) a*u - ep*u.^3;
+f_1=@(v) b*v - ep*v.^3;
+G_2=@(u2,u1) (u1 + u2);
+G_1=@(u1,u2) (u1 + u2);
+u20=0; u10=0;
+sign = [-1;+1];
+end
+
+%%
 time = datestr(datetime('now'),'yyyymmdd_HHMMSS');
 prefix = [folder,time];
 diary OFF;
@@ -65,34 +105,13 @@ for k = 1:numFiles
     load(currentFileName)
 end
 
+whos p1 t1
+
 n2 = size(p2,2);
 n1 = size(p1,2);
 
 L2=[0,L,H,2*H];
 L1=[0,L,0,H];
-
-%% Define Parameters, the Source Term, Coupling Term and steady states
-if schnakenberg
-a=0.05; b=0.5;
-D_2=1;
-D_1=1;
-f_2=@(u) a - u;
-f_1=@(v) b - 0*v;
-G_2=@(u2,u1) u2.^2.*u1;
-G_1=@(u1,u2) u2.^2.*u1;
-u20=a+b; u10=b/(a+b)^2;
-sign = [+1,-1];
-elseif in_phase
-a=0.75; b=-1; ep=0.1;
-D_2=1;
-D_1=50;
-f_2=@(u) a*u - ep*u.^3;
-f_1=@(v) b*v - ep*v.^3;
-G_2=@(u2,u1) u1 + u2;
-G_1=@(u1,u2) u1 + u2;
-u20=0; u10=0;
-sign = [-1,+1];
-end
 
 %% Steady states
 fprintf(['\nInitial steady state for\n' ...
@@ -141,7 +160,10 @@ mobj1 = matfile(bigMatName1,'Writable',true);
 mobj2 = matfile(bigMatName2,'Writable',true);
 
 mobj0.tt  = zeros(nsave,1,'double');
-
+if hopf
+mobj0.u1_avg = zeros(nsave,1,'double');
+mobj0.u2_avg = zeros(nsave,1,'double');
+end
 mobj1.u1  = zeros(n1,nsave,'single');
 mobj2.u2  = zeros(n2,nsave,'single');
 end
@@ -153,27 +175,23 @@ stopti=nt;
 
 %% Initial condition
 rng(0); 
-Perturbations2 = 0.1*randn(n2,1);
-Perturbations1 = 0.1*randn(n1,1);
-u2 = u20 + Perturbations2; %
-u1 = u10 + Perturbations1; %
+Perturbations2 = 0.01*randn(n2,1);
+Perturbations1 = 0.01*randn(n1,1);
+u2 = u20 + Perturbations2; 
+u1 = u10 + Perturbations1; 
 
 %% set up figure
 vq2=griddata(p2(1,:),p2(2,:),u2,xq2,yq2);
 vq1=griddata(p1(1,:),p1(2,:),u1,xq1,yq1);
 
-% global_min = 0; 
-% global_max = 13.3; 
-
 giffile = [prefix,eval,'_pattern','.gif'];
-fig = figure('Color','w');%,'WindowState', 'maximized');
+fig = figure('Color','w');
 ax2 = axes('Parent',fig);   % for top layer
 hold(ax2,'on');
 u2_fig=surf(ax2, xq2, yq2, vq2, 'EdgeColor','none');
 view(ax2,2)
 xlim(ax2,[L2(1),L2(2)])
 ylim(ax2,[L2(3),L2(4)])
-% clim(ax2, [global_min, global_max]);
 axis(ax2,'tight')
 xlabel(ax2,'$x$','Interpreter','latex')
 ylabel(ax2,'$u_2,~y$','Interpreter','latex')
@@ -195,7 +213,6 @@ u1_fig=surf(ax1, xq1, yq1, vq1, 'EdgeColor','none');
 view(ax1,2)
 xlim(ax1,[L1(1),L1(2)])
 ylim(ax1,[L1(3),L1(4)])
-% clim(ax1, [global_min, global_max]);
 axis(ax1,'tight')
 xlabel(ax1,'$x$','Interpreter','latex')
 ylabel(ax1,'$u_1,~y$','Interpreter','latex')
@@ -240,8 +257,11 @@ for ti = 1:nt
     u2 = u2_new;
     u1 = u1_new;
 
-    u2_avg(ti) = mean(u2);
-    u1_avg(ti) = mean(u1);
+    % u2_avg(ti) = mean(u2);
+    % u1_avg(ti) = mean(u1);
+
+    u2_avg(ti) = (ones(1,n2) * M_2 * u2) / (ones(1,n2) * M_2 * ones(n2,1));
+    u1_avg(ti) = (ones(1,n1) * M_1 * u1) / (ones(1,n1) * M_1 * ones(n1,1));
 
     % Calculate max-min for each layer
     u2_range(ti) = max(u2) - min(u2);
@@ -251,6 +271,10 @@ for ti = 1:nt
     if savemat
     saveID = saveID + 1;
     mobj0.tt(saveID,1) = t;
+    if hopf
+    mobj0.u1_avg(saveID,1) = u1_avg(ti);
+    mobj0.u2_avg(saveID,1) = u2_avg(ti);    
+    end
     mobj1.u1(:,saveID) = u1;
     mobj2.u2(:,saveID) = u2;
     end
@@ -314,60 +338,13 @@ u2_used = u2_avg(1:ti);
 fig_avg=figure;
 plot(t_used, u2_used, 'r', 'LineWidth', 2); hold on;
 plot(t_used, u1_used, 'b', 'LineWidth', 2);
-xlabel('Time');
-ylabel('Spatial average');
+xlabel('$t$','Interpreter','latex');
+ylabel('Spatial average','Interpreter','latex');
 legend('$\bar u_2(t)$', '$\bar u_1(t)$', 'Interpreter','latex');
 title('Spatially averaged dynamics (Hopf)');
 grid on;
 saveas(fig_avg,[prefix,eval,'_avg.png']);
 saveas(fig_avg,[prefix,eval,'_avg.fig']);
-
-%%
-if schnakenberg
-odefun = @(t,y) [
-    b - eta(e)/H * y(2)^2 * y(1);
-    a - y(2) + eta(e)/H * y(2)^2 * y(1)
-];
-elseif in_phase
-odefun = @(t,y) [
-    b * y(2) - ep * y(2)^3 + eta(e)/H * (y(1) + y(2));
-    a * y(1) - ep * y(1)^3 - eta(e)/H * (y(1) + y(2));
-];
-end
-
-y0 = [u10; u20];  % same steady state
-[t_ode, y_ode] = ode45(odefun, [0 t], y0);
-
-fig_ode_pde=figure;
-plot(t_used, u1_used, 'b', 'LineWidth', 2); hold on;
-plot(t_ode, y_ode(:,1), 'b--', 'LineWidth', 2); hold on;
-plot(t_used, u2_used, 'r', 'LineWidth', 2);
-plot(t_ode, y_ode(:,2), 'r--', 'LineWidth', 2);
-xlabel('$t$','Interpreter','latex');
-ylabel('Concentration');
-legend('PDE $\bar u_1$', 'ODE $u_1$', ...
-       'PDE $\bar u_2$', 'ODE $u_2$', ...
-       'Interpreter','latex');
-% title('Hopf oscillations: PDE vs ODE');
-ax = gca;
-ax.FontSize=12;
-grid on;
-saveas(fig_ode_pde,[prefix,eval,'_ode_pde.png']);
-saveas(fig_ode_pde,[prefix,eval,'_ode_pde.fig']);
-
-%%
-fig_ode=figure;
-plot(t_ode, y_ode(:,1), 'b--', 'LineWidth', 2); hold on;
-plot(t_ode, y_ode(:,2), 'r--', 'LineWidth', 2);
-xlabel('$t$','Interpreter','latex');
-ylabel('Concentration');
-legend('ODE $u_1$', ...
-       'ODE $u_2$', ...
-       'Interpreter','latex');
-title('Hopf oscillations: ODE');
-grid on;
-saveas(fig_ode,[prefix,eval,'_ode.png']);
-saveas(fig_ode,[prefix,eval,'_ode.fig']);
 
 %% Plot Spatial Range (Max - Min)
 u1_range_used = u1_range(1:ti);
@@ -379,14 +356,60 @@ plot(t_used, u1_range_used, 'b--', 'LineWidth', 2);
 xlabel('$t$','Interpreter','latex');
 ylabel('$\max(u) - \min(u)$', 'Interpreter', 'latex');
 legend('Range $u_2$ (Top)', 'Range $u_1$ (Bottom)', 'Interpreter', 'latex');
-% title('Pattern Amplitude (Spatial Max - Min) over Time');
+title('Pattern Amplitude (Spatial Max - Min) over Time');
 ax = gca;
 ax.FontSize=12;
 grid on;
-
-% Save the figure
 saveas(fig_range, [prefix, eval, '_range.png']);
 saveas(fig_range, [prefix, eval, '_range.fig']);
+
+%% ODE
+if schnakenberg
+odefun = @(t,y) [
+    b - eta(e)/H * y(2)^2 * y(1);
+    a - y(2) + eta(e)/H * y(2)^2 * y(1)
+];
+elseif in_phase
+odefun = @(t,y) [
+    b * y(1) - ep * y(1)^3 + eta(e)/H * (y(1) + y(2));
+    a * y(2) - ep * y(2)^3 - eta(e)/H * (y(1) + y(2));
+];
+end
+
+y0 = [u10; u20] + 1e-3* [1; -1];
+[t_ode, y_ode] = ode45(odefun, [0 t], y0);
+
+%%
+fig_ode=figure;
+plot(t_ode, y_ode(:,1), 'b--', 'LineWidth', 2); hold on;
+plot(t_ode, y_ode(:,2), 'r--', 'LineWidth', 2);
+xlabel('$t$','Interpreter','latex');
+ylabel('Concentration','Interpreter','latex');
+legend('ODE $u_1$', ...
+       'ODE $u_2$', ...
+       'Interpreter','latex');
+title('Hopf oscillations: ODE');
+grid on;
+saveas(fig_ode,[prefix,eval,'_ode.png']);
+saveas(fig_ode,[prefix,eval,'_ode.fig']);
+
+%%
+fig_ode_pde=figure;
+plot(t_used, u1_used, 'b', 'LineWidth', 2); hold on;
+plot(t_ode, y_ode(:,1), 'b--', 'LineWidth', 2); hold on;
+plot(t_used, u2_used, 'r', 'LineWidth', 2);
+plot(t_ode, y_ode(:,2), 'r--', 'LineWidth', 2);
+xlabel('$t$','Interpreter','latex');
+ylabel('Concentration','Interpreter','latex');
+legend('$\bar u_1$ (2D PDE)', '$u_1$ (ODE)', ...
+       '$\bar u_2$ (2D PDE)', '$u_2$ (ODE)', ...
+       'Interpreter','latex');
+title('Hopf oscillations: PDE vs ODE');
+ax = gca;
+ax.FontSize=12;
+grid on;
+saveas(fig_ode_pde,[prefix,eval,'_ode_pde.png']);
+saveas(fig_ode_pde,[prefix,eval,'_ode_pde.fig']);
 
 end
 
