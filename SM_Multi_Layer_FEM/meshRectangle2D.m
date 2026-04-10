@@ -1,7 +1,7 @@
 clear all; close all; clc;
 save_file=1; % 0-only see meshes; 1-save the mesh files
 
-folder='D:\MATLAB Output\SM_Multi_Layer_FEM\';
+folder='D:\MATLAB Output\SM_Multi_Layer_FEM\meshes\';
 time = datestr(datetime('now'),'yyyymmdd_HHMMSS');
 prefix = [folder,time];
 dy=0.03; 
