@@ -1,4 +1,4 @@
-function [St,Ma] = AssembleGlobalMatrices_corrected2(p,t,ord)
+function [St,Ma] = AssembleGlobalMatrices2D(p,t,ord)
 % Assemble global stiffness (St) and mass (Ma) matrices
 % p: 2xN node coordinates
 % t: 3xM element connectivity
