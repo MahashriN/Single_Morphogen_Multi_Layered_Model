@@ -33,7 +33,6 @@ end
 
 %%
 N = 2;
-L = 20;
 H = 0.1;
 eta = 0.1; 
 
@@ -57,7 +56,8 @@ folder = [folder,'boundary\'];
 a=0.05; b=0.7;
 D_2=1;
 D_1=20;
-    end        
+    end
+L=20;
 f_2=@(u) a - u;
 f_1=@(v) b - 0*v;
 G_2=@(u2,u1) (u2.^2.*u1);
@@ -69,6 +69,7 @@ folder = [folder,'in_phase\'];
 a=0.75; b=-1; ep=0.01;
 D_2=1;
 D_1=50;
+L=100;
 f_2=@(u) a*u - ep*u.^3;
 f_1=@(v) b*v - ep*v.^3;
 G_2=@(u2,u1) (u1 + u2);
