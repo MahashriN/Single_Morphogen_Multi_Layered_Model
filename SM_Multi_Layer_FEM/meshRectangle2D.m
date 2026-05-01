@@ -4,10 +4,11 @@ save_file=1; % 0-only see meshes; 1-save the mesh files
 folder='D:\MATLAB Output\SM_Multi_Layer_FEM\meshes\';
 time = datestr(datetime('now'),'yyyymmdd_HHMMSS');
 prefix = [folder,time];
-dy=0.03; 
-dx=0.1;
+
 H=0.1;    
 L=20;
+dy=H/10; 
+dx=L/250;
 N=2;
 pf=['N=',num2str(N),'\','L=',num2str(L),'\','H=',num2str(H),'\'];
 
