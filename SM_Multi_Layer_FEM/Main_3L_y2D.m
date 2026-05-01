@@ -31,9 +31,9 @@ jjj = drawperframe*(jj)+1;
 %%
 N=3;
 L=20;
-H=0.01;
-eta_23 = 1; 
-eta_12 = 1; 
+H=0.05;
+eta_23 = 0.1; 
+eta_12 = 0.1; 
 
 %% saving folder and name
 folder='D:\MATLAB Output\SM_Multi_Layer_FEM\Turing_wave\';
