@@ -48,6 +48,7 @@ The main scripts call the following core routines:
   - `AssembleGlobalMatrices2D.m` - Assembles global mass and stiffness matrices for the 2D finite element problem.
   - `ReactKineInt.m` - Computes integrals associated with nonlinear reaction kinetics.
   - `NLBoundFluxInt.m` - Computes nonlinear boundary flux integrals.
+  - `Dispersion.m` - Computes and plots dispersion relations for the reduced model, including identification of real and complex eigenvalue branches.
 
 These routines rely on the following helper files: `basis_linear_1D.m`, `basis_linear_2D.m`, `RefElemQuad.m`, `RefEdgeQuad.m` 
 which define linear basis functions and reference quadrature elements in 1D and 2D.
