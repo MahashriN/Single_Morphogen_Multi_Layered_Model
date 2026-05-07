@@ -3,7 +3,7 @@ function [basis, grad_basis] = basis_linear_1D(x)
 x = x(:)';  % Ensure row vector for consistent output
 n = length(x);
 
-basis = [1 - x; x];        % φ₁ = 1 - x, φ₂ = x
+basis = [1 - x; x];        % phi1 = 1 - x, phi2 = x
 
-grad_basis = repmat([-1; 1], 1, n);  % dφ₁/dξ = -1, dφ₂/dξ = 1
+grad_basis = repmat([-1; 1], 1, n);  % dphi1 = -1, dphi2 = 1
 end
