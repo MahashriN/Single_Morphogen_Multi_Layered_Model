@@ -21,7 +21,7 @@ for k = 1:M
     nodes = p(:,t(:,k));              % 2x3 coordinates of element
     C = [nodes(:,2)-nodes(:,1), nodes(:,3)-nodes(:,1)]; % Jacobian
     Cdet = det(C);
-    CinvT = inv(C)';                  % (C^-1)^T
+    CinvT = inv(C)';                  
 
     node_ids = t(:,k);                % 3 local node indices
     Local_M = zeros(3,3);
